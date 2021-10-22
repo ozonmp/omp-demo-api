@@ -4,7 +4,7 @@
 
 1. Создать репозиторий именование которого указано в таблице прогресса
 
-2. Описать сущность {domain}.{Subdomain} и {domain}.{Subdomain}Event в **internal/model/{subdomain}.go**
+2. Описать сущность `{domain}.{Subdomain}` и `{domain}.{Subdomain}Event` в **internal/model/{subdomain}.go**
 
 3. Реализовать паттерн consumer-producer из **db** в **kafka** на основе интерфейсов`EventRepo` и `EventSender` для одного типа события **Created**
 
