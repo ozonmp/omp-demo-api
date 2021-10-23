@@ -28,6 +28,7 @@ type producer struct {
 	done chan bool
 }
 
+// todo for students: add repo
 func NewKafkaProducer(
 	n uint64,
 	sender sender.EventSender,
@@ -57,9 +58,13 @@ func (p *producer) Start() {
 				select {
 				case event := <-p.events:
 					if err := p.sender.Send(&event); err != nil {
-						p.workerPool.Submit(func() {})
+						p.workerPool.Submit(func() {
+							// ...
+						})
 					} else {
-						p.workerPool.Submit(func() {})
+						p.workerPool.Submit(func() {
+							// ...
+						})
 					}
 				case <-p.done:
 					return
