@@ -67,6 +67,10 @@ func (p *producer) Start() {
 						})
 					}
 				case <-p.done:
+					if len(p.events) != 0 {
+						break
+					}
+
 					return
 				}
 			}
