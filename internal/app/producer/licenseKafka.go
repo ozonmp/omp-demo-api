@@ -1,17 +1,17 @@
 package producer
 
 import (
-	"github.com/ozonmp/omp-demo-api/internal/app/repo"
-	"github.com/ozonmp/omp-demo-api/internal/model/license"
+	"context"
+	"github.com/gammazero/workerpool"
+	"github.com/ozonmp/lic-license-api/internal/app/repo"
+	"github.com/ozonmp/lic-license-api/internal/app/sender"
+	"github.com/ozonmp/lic-license-api/internal/model/license"
 	"sync"
 	"time"
-
-	"github.com/gammazero/workerpool"
-	"github.com/ozonmp/omp-demo-api/internal/app/sender"
 )
 
 type LicenseProducer interface {
-	Start()
+	Start(ctx context.Context)
 	Close()
 }
 
@@ -33,7 +33,6 @@ type licenseProducer struct {
 func NewKafkaLicenseProducer(
 	n uint64,
 	sender sender.LicenseEventSender,
-	repo repo.LicenseEventRepo,
 	events <-chan license.LicenseEvent,
 	workerPool *workerpool.WorkerPool,
 ) LicenseProducer {
@@ -44,7 +43,6 @@ func NewKafkaLicenseProducer(
 	return &licenseProducer{
 		n:          n,
 		sender:     sender,
-		repo:       repo,
 		events:     events,
 		workerPool: workerPool,
 		wg:         wg,
@@ -52,7 +50,7 @@ func NewKafkaLicenseProducer(
 	}
 }
 
-func (p *licenseProducer) Start() {
+func (p *licenseProducer) Start(ctx context.Context) {
 	for i := uint64(0); i < p.n; i++ {
 		p.wg.Add(1)
 		go func() {
@@ -60,16 +58,14 @@ func (p *licenseProducer) Start() {
 			for {
 				select {
 				case event := <-p.events:
-					if err := p.sender.Send(&event); err != nil {
-						p.workerPool.Submit(func() {
-							// ...
-						})
-					} else {
-						p.workerPool.Submit(func() {
-							// ...
-						})
+					if event.Type == license.Created {
+						if err := p.sender.Send(&event); err != nil {
+							p.workerPool.Update(event)
+						} else {
+							p.workerPool.Clean(event)
+						}
 					}
-				case <-p.done:
+				case <-ctx.Done():
 					return
 				}
 			}
