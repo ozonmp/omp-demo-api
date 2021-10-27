@@ -1,7 +1,7 @@
 package repo
 
 import (
-	"github.com/ozonmp/omp-demo-api/internal/model/license"
+	"github.com/ozonmp/lic-license-api/internal/model/license"
 )
 
 // TODO: Think about is it Event?

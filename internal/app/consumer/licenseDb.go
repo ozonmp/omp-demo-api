@@ -1,36 +1,35 @@
 package consumer
 
 import (
-	"github.com/ozonmp/omp-demo-api/internal/model/license"
+	"context"
+	"github.com/ozonmp/lic-license-api/internal/app/repo"
+	"github.com/ozonmp/lic-license-api/internal/model/license"
 	"sync"
 	"time"
-
-	"github.com/ozonmp/omp-demo-api/internal/app/repo"
-	"github.com/ozonmp/omp-demo-api/internal/model"
 )
 
 type LicenseConsumer interface {
-	Start()
+	Start(ctx context.Context)
 	Close()
 }
 
 type licenseConsumer struct {
 	n      uint64
-	events chan<- model.SubdomainEvent
+	events chan<- license.LicenseEvent
 
-	repo repo.EventRepo
+	repo repo.LicenseEventRepo
 
 	batchSize uint64
 	timeout   time.Duration
 
-	done chan bool
-	wg   *sync.WaitGroup
+	ctx context.Context
+	wg  *sync.WaitGroup
 }
 
 type LicenseConfig struct {
 	n         uint64
 	events    chan<- license.LicenseEvent
-	repo      repo.EventRepo
+	repo      repo.LicenseEventRepo
 	batchSize uint64
 	timeout   time.Duration
 }
@@ -39,11 +38,10 @@ func NewLicenseDbConsumer(
 	n uint64,
 	batchSize uint64,
 	consumeTimeout time.Duration,
-	repo repo.EventRepo,
-	events chan<- model.SubdomainEvent) LicenseConsumer {
+	repo repo.LicenseEventRepo,
+	events chan<- license.LicenseEvent) LicenseConsumer {
 
 	wg := &sync.WaitGroup{}
-	done := make(chan bool)
 
 	return &licenseConsumer{
 		n:         n,
@@ -52,11 +50,10 @@ func NewLicenseDbConsumer(
 		repo:      repo,
 		events:    events,
 		wg:        wg,
-		done:      done,
 	}
 }
 
-func (c *licenseConsumer) Start() {
+func (c *licenseConsumer) Start(ctx context.Context) {
 	for i := uint64(0); i < c.n; i++ {
 		c.wg.Add(1)
 
@@ -73,7 +70,7 @@ func (c *licenseConsumer) Start() {
 					for _, event := range events {
 						c.events <- event
 					}
-				case <-c.done:
+				case <-ctx.Done():
 					return
 				}
 			}
@@ -82,6 +79,5 @@ func (c *licenseConsumer) Start() {
 }
 
 func (c *licenseConsumer) Close() {
-	close(c.done)
 	c.wg.Wait()
 }

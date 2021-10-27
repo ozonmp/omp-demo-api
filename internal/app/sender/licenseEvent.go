@@ -1,7 +1,7 @@
 package sender
 
 import (
-	"github.com/ozonmp/omp-demo-api/internal/model/license"
+	"github.com/ozonmp/lic-license-api/internal/model/license"
 )
 
 type LicenseEventSender interface {
