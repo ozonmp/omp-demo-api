@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/ozonmp/omp-demo-api/internal/app/retranslator"
 )
@@ -16,6 +17,7 @@ func main() {
 		ChannelSize:   512,
 		ConsumerCount: 2,
 		ConsumeSize:   10,
+		ConsumeTimeout:  1000 * time.Millisecond,
 		ProducerCount: 28,
 		WorkerCount:   2,
 	}
