@@ -1,19 +1,19 @@
 package retranslator
 
 import (
+	"context"
+	"github.com/ozonmp/lic-license-api/internal/app/consumer"
+	"github.com/ozonmp/lic-license-api/internal/app/producer"
+	"github.com/ozonmp/lic-license-api/internal/app/repo"
+	"github.com/ozonmp/lic-license-api/internal/app/sender"
+	"github.com/ozonmp/lic-license-api/internal/model/license"
 	"time"
-
-	"github.com/ozonmp/omp-demo-api/internal/app/consumer"
-	"github.com/ozonmp/omp-demo-api/internal/app/producer"
-	"github.com/ozonmp/omp-demo-api/internal/app/repo"
-	"github.com/ozonmp/omp-demo-api/internal/app/sender"
-	"github.com/ozonmp/omp-demo-api/internal/model"
 
 	"github.com/gammazero/workerpool"
 )
 
 type Retranslator interface {
-	Start()
+	Start(ctx context.Context)
 	Close()
 }
 
@@ -27,48 +27,45 @@ type Config struct {
 	ProducerCount uint64
 	WorkerCount   int
 
-	Repo   repo.EventRepo
-	Sender sender.EventSender
+	Repo   repo.LicenseEventRepo
+	Sender sender.LicenseEventSender
 }
 
 type retranslator struct {
-	events     chan model.SubdomainEvent
-	consumer   consumer.Consumer
-	producer   producer.Producer
-	workerPool *workerpool.WorkerPool
+	events   chan license.LicenseEvent
+	consumer consumer.LicenseConsumer
+	producer producer.LicenseProducer
+	cancel   context.CancelFunc
 }
 
 func NewRetranslator(cfg Config) Retranslator {
-	events := make(chan model.SubdomainEvent, cfg.ChannelSize)
-	workerPool := workerpool.New(cfg.WorkerCount)
+	events := make(chan license.LicenseEvent, cfg.ChannelSize)
 
-	consumer := consumer.NewDbConsumer(
+	consumer := consumer.NewLicenseDbConsumer(
 		cfg.ConsumerCount,
 		cfg.ConsumeSize,
 		cfg.ConsumeTimeout,
 		cfg.Repo,
 		events)
-	producer := producer.NewKafkaProducer(
+	producer := producer.NewKafkaLicenseProducer(
 		cfg.ProducerCount,
 		cfg.Sender,
 		events,
-		workerPool)
+		workerpool.NewWorkerPool(cfg.WorkerCount, cfg.Repo))
 
 	return &retranslator{
-		events:     events,
-		consumer:   consumer,
-		producer:   producer,
-		workerPool: workerPool,
+		events:   events,
+		consumer: consumer,
+		producer: producer,
 	}
 }
 
-func (r *retranslator) Start() {
-	r.producer.Start()
-	r.consumer.Start()
+func (r *retranslator) Start(ctx context.Context) {
+	r.producer.Start(ctx)
+	r.consumer.Start(ctx)
 }
 
 func (r *retranslator) Close() {
 	r.consumer.Close()
 	r.producer.Close()
-	r.workerPool.StopWait()
 }

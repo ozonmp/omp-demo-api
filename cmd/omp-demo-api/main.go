@@ -1,11 +1,11 @@
 package main
 
 import (
+	"context"
+	"github.com/ozonmp/lic-license-api/internal/app/retranslator"
 	"os"
 	"os/signal"
 	"syscall"
-
-	"github.com/ozonmp/omp-demo-api/internal/app/retranslator"
 )
 
 func main() {
@@ -21,7 +21,9 @@ func main() {
 	}
 
 	retranslator := retranslator.NewRetranslator(cfg)
-	retranslator.Start()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	retranslator.Start(ctx)
 
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
